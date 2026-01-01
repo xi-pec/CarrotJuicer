@@ -1,0 +1,47 @@
+name: Build version.dll
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "*" ]
+  pull_request:
+    branches: [ "master" ]
+
+env:
+  SOLUTION_FILE_PATH: .
+  BUILD_CONFIGURATION: Release
+  VCPKG_ROOT: ${{ github.workspace }}\vcpkg
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Add MSBuild to PATH
+      uses: microsoft/setup-msbuild@v1.0.2
+
+    - name: Clone vcpkg
+      run: git clone https://github.com/microsoft/vcpkg.git
+
+    - name: Bootstrap vcpkg
+      run: .\vcpkg\bootstrap-vcpkg.bat
+      shell: cmd
+
+    - name: Install dependencies from manifest
+      run: .\vcpkg\vcpkg.exe install --triplet x64-windows-static
+      shell: cmd
+
+    - name: Run MSBuild with vcpkg
+      run: msbuild ${{env.SOLUTION_FILE_PATH}} /m /p:Configuration=Release /p:VcpkgTriplet=x64-windows-static
+      shell: cmd
+
+    - name: Upload version.dll as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: version-build-artifacts
+        path: x64/Release/
